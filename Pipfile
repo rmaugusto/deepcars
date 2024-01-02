@@ -1,0 +1,14 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+arcade = "==2.6.17"
+numpy = "==1.26.2"
+opencv-python = "==4.8.1.78"
+
+[dev-packages]
+
+[requires]
+python_version = "3.11"
