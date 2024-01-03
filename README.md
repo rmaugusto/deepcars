@@ -1,7 +1,7 @@
 Esse é um projeto remake de https://github.com/JVictorDias/DeepCars em Python.
 Da mesma forma do original decidi fazer para facilitar os estudos em redes neurais.
 
-![Deep cars running]([http://url/to/img.png](https://github.com/rmaugusto/deepcars/blob/master/deepcars.gif))
+![Deep cars running](https://github.com/rmaugusto/deepcars/blob/master/deepcars.gif)
 
 Eu mantive o código original no diretorio "original" para facilitar a tradução.
 
