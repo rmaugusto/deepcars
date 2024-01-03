@@ -28,6 +28,7 @@ Referências:
 * Quando chega na linha de chegada exibe o laiser destruidor e os 18 sensores
 * O algoritimo de distancia foi usada dijkstra
 * No final da execução é gravado deepcars.prof para estatisticas de performance
+* Processamento de update de cars multithread
 
 # Funcionalidades não implementadas:
 * Graficos maneiros de explosão do laser destruidor
