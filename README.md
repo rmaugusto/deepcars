@@ -35,6 +35,6 @@ Referências:
 * Otimizações de IA com frameworks como PyTorch
 
 # Instalação
-{ pip install --user pipenv }
-{ pipenv install }
-{ python deepcars/main.py }
+pip install --user pipenv
+pipenv install
+python deepcars/main.py
