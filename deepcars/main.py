@@ -1,19 +1,21 @@
 import copy
-import time
 import arcade
 import math
 import numpy as np
 import pickle
 import numpy
 from utils import Util
+from queue import Queue
+from threading import Thread
+
 
 SCREEN_WIDTH = 1000
 SCREEN_HEIGHT = 1000
 MAP_WIDTH = 2000
 MAP_HEIGHT = 2000
-TOTAL_CARS = 1000
+TOTAL_CARS = 200
 TRAINING_BLANK = True
-MIN_CAR_SPEED = 5
+MIN_CAR_SPEED = 1
 MAX_CAR_SPEED = 10
 CAR_ROTATION_SPEED = 5
 MAP_INITIAL_POS = (1875 , 1200)
@@ -61,6 +63,41 @@ SPEED_ZONES_POS = [
 ]
 
 arcade.enable_timings()
+
+class Worker(Thread):
+    """Thread executing tasks from a given tasks queue"""
+    def __init__(self, tasks):
+        Thread.__init__(self)
+        self.tasks = tasks
+        self.daemon = True
+        self.start()
+
+    def run(self):
+        while True:
+            func, args, kargs = self.tasks.get()
+            try:
+                func(*args, **kargs)
+            except:
+                pass
+            finally:
+                self.tasks.task_done()
+
+
+class ThreadPool:
+    """Pool of threads consuming tasks from a queue"""
+    def __init__(self, num_threads):
+        self.tasks = Queue(num_threads)
+        for _ in range(num_threads):
+            Worker(self.tasks)
+
+    def add_task(self, func, *args, **kargs):
+        """Add a task to the queue"""
+        self.tasks.put((func, args, kargs))
+
+    def wait_completion(self):
+        """Wait for completion of all the tasks in the queue"""
+        self.tasks.join()
+
 
 class GameData(object):
     def __init__(self):
@@ -158,7 +195,7 @@ class Car(arcade.Sprite):
         self.raycasting = RayCasting(self,RAY_CAR_COUNT,180)
         self.collided = False
         self.distance = 0
-        self.brain = NeuralNetwork([BRAIN_SIZE_INPUT, BRAIN_SIZE_HIDDEN, BRAIN_SIZE_OUTPUT],'relu')
+        self.brain = NeuralNetwork([BRAIN_SIZE_INPUT, BRAIN_SIZE_HIDDEN, BRAIN_SIZE_HIDDEN, BRAIN_SIZE_OUTPUT],'relu')
         self.manual = False
         self.speed = MIN_CAR_SPEED
 
@@ -178,11 +215,11 @@ class Car(arcade.Sprite):
 
     def speed_up(self):
         if self.speed < MAX_CAR_SPEED:
-            self.speed += 0.2
+            self.speed += 0.5
 
     def slow_down(self):
         if self.speed > MIN_CAR_SPEED:
-            self.speed -= 0.2
+            self.speed -= 0.5
 
     def forward(self):
         self.moving = True
@@ -233,7 +270,7 @@ class Car(arcade.Sprite):
             self.raycasting.cast_rays(self.game_context.walls)
 
             if self.game_context.speed_zones[int(self.center_x), int(self.center_y)] == -1:
-                self.speed = 1
+                self.speed = MIN_CAR_SPEED
             elif self.game_context.speed_zones[int(self.center_x), int(self.center_y)] == 1:
                 self.speed = MAX_CAR_SPEED
 
@@ -355,6 +392,8 @@ class MyGame(arcade.Window):
         self.game_context.speed_zones = np.full((MAP_WIDTH, MAP_HEIGHT), 0)
         self.game_data = GameData()
         self.processing_seconds = 0
+        self.pool = ThreadPool(50)
+
 
     def setup(self):
         self.map_sprite = arcade.Sprite("imagens/pistaObstaculo.png",1)
@@ -420,7 +459,6 @@ class MyGame(arcade.Window):
                 if(self.best_brain):
                     car.brain = self.best_brain.clone()
                     car.brain.mutate_randomly()
-                    self.best_brain = None
 
                 self.cars.append(car)
 
@@ -437,7 +475,8 @@ class MyGame(arcade.Window):
 
     def on_update(self, delta_time):
 
-        self.processing_seconds += delta_time
+        if not self.game_context.model_success:
+            self.processing_seconds += delta_time
 
         self.text_messages = [None] * 30
 
@@ -477,7 +516,7 @@ class MyGame(arcade.Window):
     def update_destroyer(self):
         self.destroyer_distance = self.destroyer_distance + self.destroyer_speed
         if self.destroyer_speed <= MAX_CAR_SPEED*0.8:
-            self.destroyer_speed = self.destroyer_speed + 0.004
+            self.destroyer_speed = self.destroyer_speed + 0.008
 
         if self.game_context.model_success:
             self.destroyer_distance_points = self.find_laser_position()
@@ -649,8 +688,11 @@ class MyGame(arcade.Window):
 
 
     def update_cars(self):
+
         for car in self.cars:
-            self.update_car(car)
+            self.pool.add_task(self.update_car, car)
+
+        self.pool.wait_completion()
 
 
 def main():
